@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "XT-Luna-Zero: Architecture of a 194M-Parameter Sparse Decoder"
+type: report
+authors:
+  - name: XtrComSu
+    alias: XtrComSu
+date-released: 2026-11-06
+version: 0.1.0-draft
+license: CC-BY-4.0
+abstract: >-
+  XT-Luna-Zero is a decoder-only language model designed for training from
+  scratch on a single GPU. Its 16 blocks combine causal attention with a
+  feed-forward mixture of experts containing one shared expert and four routed
+  experts per block. Top-1 routing yields a reported 194,048,640 stored
+  parameters and 99,676,800 active parameters per token under the project's
+  counting convention.
+keywords:
+  - mixture of experts
+  - sparse decoder
+  - language model
+  - small-scale pretraining
+  - grouped-query attention
+identifiers:
+  - type: url
+    value: "https://github.com/XtrComSu/XT-Luna-Zero"

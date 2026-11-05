@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build artefacts and logs
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+/var/log/
+
+# Local checkpoints and data drops
+checkpoints/
+runs/
+*.pt
+*.bin
+*.safetensors
+.env
