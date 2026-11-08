@@ -5,6 +5,12 @@ Technical report draft · November 6, 2026 · XtrComSu
 
 📄 **[Read the paper (PDF)](paper/XT-Luna-Zero-Architecture.pdf)**
 
+> **This README was updated on 2026-11-08.** The paper describes the *original* 194M
+> design and its numerical checks, and has not been rewritten. Real-text training has
+> since happened on a larger model, and this README now covers both. Where the two
+> differ, the sections are labelled. The paper is unchanged; treat it as the record of
+> the design phase it documents.
+
 ## Abstract
 
 XT-Luna-Zero is a decoder-only language model built to train from scratch on a
@@ -16,45 +22,151 @@ them.
 
 The report follows the forward path, works through the sparse parameter
 budget, and separates the numerical checks that were actually run from the
-work that was not. At the last reported milestone there was no real-text
-training checkpoint. Language quality, reasoning, and effective long-context
-recall are still unmeasured.
+work that was not.
 
-## Contents of the report
+**That abstract describes the design phase.** At the time the paper was written there
+was no real-text training checkpoint; language quality, reasoning and long-context
+recall were unmeasured. They have since been measured on a larger model, in
+[Models](#models) below.
 
-| § | Topic |
+## Models
+
+Two model definitions exist in this project. Both are verified by instantiating them
+and summing parameters, not by reading a config.
+
+### XT-Luna-Zero (v3), the 194M design this report documents
+
+| | |
 |---|---|
-| 1 | Purpose and scope |
-| 2 | Decoder architecture: 16 blocks, width 640, GQA head layout, tied 32K embeddings |
-| 3 | Attention and expert routing: local and global causal schedule, shared and routed SwiGLU experts, parameter accounting |
-| 4 | Reported engineering evidence: attention reference checks, BF16 integration, data and checkpoints |
-| 5 | Pretraining and evaluation protocol: 60/30/10 corpus allocation, 0.5B-token pilot, held-out metrics |
-| 6 | Scope of future experiments |
+| Stored parameters | **194,048,640** |
+| Active per token | 99,676,800 |
+| Layers | 16 |
+| Width | 640 |
+| Heads | 10 query / 2 KV (GQA) |
+| Experts per block | 1 shared + 4 routed, top-1 |
+| FFN width | 1024 |
+| Vocabulary | 32,768 (tied embedding) |
+| Attention | sliding window 2048, every 4th layer global |
+| Positional | RoPE θ=500,000, max 131,072 |
+| Definition | `molab/model_v3.py` |
 
-## Key figures
+This is the architecture the paper's parameter accounting describes. Its engineering
+checks are the attention output against an explicit causal-window reference in FP32 at
+lengths from 1,024 to 6,144.
 
-| Quantity | Parameters |
-|---|---:|
-| Stored model | 194,048,640 |
-| Routed weights skipped per token | 94,371,840 |
-| Active per token (project convention) | 99,676,800 |
+### XT-Luna Core, the model that was actually trained
 
-That active count describes selection for one token. A batch can wake every
-routed expert at once, and the stored weights still have to fit in memory
-either way. It is not a measured FLOP count, and it says nothing about
-wall-clock throughput.
+| | |
+|---|---|
+| Stored parameters | **374,989,440** |
+| Active per token | **139,059,840** |
+| Layers | 24 |
+| Width | 640 |
+| Heads | 10 query / 2 KV (GQA), head dim 64 |
+| Experts per block | **1 shared + 6 routed, top-1** |
+| FFN width | 1024 |
+| Vocabulary | 32,768 (tied embedding) |
+| Attention | sliding window 2048, every 4th layer global |
+| Positional | RoPE θ=500,000, max 131,072 |
+| Optimizer | Muon (Kimi-style) on hidden matrices, AdamW elsewhere |
+| Definition | `molab/model_core.py` |
+
+The active-parameter count is checkable by hand. Each routed expert holds
+
+```
+3 · d · d_ff = 3 · 640 · 1024 = 1,966,080
+```
+
+so skipping five of six per layer saves `5 · 1,966,080 = 9,830,400` per layer, and over
+24 layers `235,929,600`. And `374,989,440 - 235,929,600 = 139,059,840`, exactly the
+active figure. That arithmetic only closes for **top-1 of six**; it is how the count was
+verified rather than assumed.
+
+## Measured results
+
+Held-out cross-entropy, byte-level BPE, 8 windows of 2048 tokens per domain (16,384
+tokens per point). Lower is better.
+
+| Tokens | Mean | General | Science | Math | Code | Top-1 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0.03B | 4.1230 | 5.4140 | 4.4630 | 3.6560 | 2.9590 | 0.3310 |
+| 0.20B | 2.4930 | 3.9960 | 2.9390 | 1.6770 | 1.3590 | 0.5210 |
+| 0.40B | 2.3400 | 3.7860 | 2.7110 | 1.5850 | 1.2780 | 0.5380 |
+| 0.60B | 2.2502 | 3.7061 | 2.5972 | 1.5023 | 1.1950 | 0.5515 |
+| 0.80B | 2.1845 | 3.6548 | 2.5364 | 1.4449 | 1.1017 | 0.5654 |
+| 1.00B | 2.1578 | 3.6312 | 2.4608 | 1.3964 | 1.1427 | 0.5650 |
+| 1.20B | 2.1424 | 3.6009 | 2.4223 | 1.4379 | 1.1085 | 0.5693 |
+| 1.40B | 2.1203 | 3.5817 | 2.3800 | 1.4193 | 1.1001 | 0.5690 |
+| 1.60B | 2.0937 | 3.5677 | 2.3753 | 1.3660 | 1.0657 | 0.5746 |
+| 1.80B | 2.0724 | 3.5296 | 2.3432 | 1.3668 | 1.0498 | 0.5770 |
+| 2.00B | 2.0511 | 3.5338 | 2.3077 | 1.3540 | 1.0088 | 0.5815 |
+| 2.20B | 2.0289 | 3.5002 | 2.2884 | 1.3181 | 1.0088 | 0.5860 |
+| 2.40B | 2.0119 | 3.4884 | 2.2674 | 1.3035 | 0.9886 | 0.5884 |
+| 2.60B † | 2.2275 | 3.4527 | 2.2387 | 1.2930 | 1.9255 | 0.5462 |
+| 2.80B † | 2.2259 | 3.4289 | 2.2180 | 1.3646 | 1.8920 | 0.5435 |
+
+† From 2.6B the training sequence length changed from 2048 to 8192. Evaluation stays at
+2048 throughout, so these rows are comparable in measurement but not in training
+condition. The mean rises and code more than doubles while general, science and math all
+continue to improve. The model is adapting to longer training sequences, and the mean
+is being carried by code. These rows are **not** a quality regression and should not be
+read as one.
+
+Observed trend before the switch was `approximately -0.11 nats per billion tokens`,
+stable from 1.2B to 2.4B.
+
+### What the curve does not say
+
+- It is a **single** held-out set at 8 windows per domain. The standard error is about
+  0.08 to 0.10 nats, so differences below roughly 0.2 nats between adjacent points are
+  not individually meaningful; the trend across many points is.
+- It measures next-token prediction on held-out text of the same distribution. It says
+  nothing about instruction following, reasoning chains, or long-context recall.
+- Code crossed below math at 2.0B and is the only domain that changed discontinuously at
+  the sequence-length switch. Both facts are unexplained by this curve alone.
+
+## Corpus
+
+Trained on 5.5B tokens from a byte-level BPE vocabulary of 32,768, drawn from fineweb-edu
+(general), open-web-math (science), OpenMathInstruct-2 and NuminaMath (math), and
+OpenCodeInstruct and OpenCodeReasoning (code), plus dialogue and long-document data in
+the later mixture.
+
+A corpus rebuild for a 20B-token run is in progress, sized from measured dataset capacity
+rather than dataset cards. One finding worth recording: the original mixture sampled math
+at **5.35× repetition** against a 51M-token bucket, and math is the only domain showing no
+improvement in paired per-window comparisons. Repetition moves loss without adding
+capability.
 
 ## Status
 
-What the paper does contain is an engineering design and a parameter
-accounting. The numerical checks cover attention output against an explicit
-causal-window reference in FP32 at lengths from 1,024 to 6,144. A production
-BF16 training step is still unverified. The only checkpoint reported so far
-came from a repeated numeric pattern built for a smoke test.
+| Stage | State |
+|---|---|
+| Architecture and parameter accounting | Complete and verified by instantiation |
+| Attention reference checks (FP32, 1,024 to 6,144) | Complete |
+| BF16 training step | Complete |
+| Real-text training, 194M design | **Not run** |
+| Real-text training, 375M core | **Complete to 2.8B tokens**, continuing |
+| Held-out evaluation from 0.03B to 2.8B | Complete, table above |
+| Long-context recall | **Unmeasured**. The memory probe is a synthetic proxy, not a benchmark |
+| Instruction following / reasoning | **Unmeasured** |
 
-So any claim about language modeling quality, or about a particular
-architectural choice helping, needs held-out results from real-text runs
-before it means anything.
+## Planned experiments
+
+The paper's §6 names these as future work. **None has been started.** They are listed
+here so the roadmap is visible, not to imply progress:
+
+- a larger flat control
+- phase-specific expert pools
+- chained reasoning
+- Grassmann mixing
+- rhythm conditioning
+- multi-token prediction
+- a DeepSeek-inspired reading/writing split
+
+They are **not** numbered V1-V5 in any document in this project, and no results exist for
+any of them. Any ablation claim about this architecture is currently unsupported: without
+a matched control run, an architectural change cannot be separated from seed variance.
 
 ## Citation
 
@@ -68,6 +180,9 @@ before it means anything.
   url    = {https://github.com/XtrComSu/XT-Luna-Zero}
 }
 ```
+
+The paper cites the 194M design. If you are citing the measured results, cite them as
+the 375M core model, not as the paper's architecture.
 
 Machine-readable metadata sits in [`CITATION.cff`](CITATION.cff).
 
