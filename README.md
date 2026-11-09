@@ -68,7 +68,7 @@ lengths from 1,024 to 6,144.
 | Vocabulary | 32,768 (tied embedding) |
 | Attention | sliding window 2048, every 4th layer global |
 | Positional | RoPE θ=500,000, max 131,072 |
-| Optimizer | Muon (Kimi-style) on hidden matrices, AdamW elsewhere |
+| Optimizer | **AdamW** (β 0.9/0.95, eps 1e-8, wd 0.1 on ndim≥2). A HybridMuonAdamW exists behind `--optimizer muon` but is **not** in use: see note below |
 | Definition | `molab/model_core.py` |
 
 The active-parameter count is checkable by hand. Each routed expert holds
@@ -87,33 +87,67 @@ verified rather than assumed.
 Held-out cross-entropy, byte-level BPE, 8 windows of 2048 tokens per domain (16,384
 tokens per point). Lower is better.
 
-| Tokens | Mean | General | Science | Math | Code | Top-1 |
-|---:|---:|---:|---:|---:|---:|---:|
-| 0.03B | 4.1230 | 5.4140 | 4.4630 | 3.6560 | 2.9590 | 0.3310 |
-| 0.20B | 2.4930 | 3.9960 | 2.9390 | 1.6770 | 1.3590 | 0.5210 |
-| 0.40B | 2.3400 | 3.7860 | 2.7110 | 1.5850 | 1.2780 | 0.5380 |
-| 0.60B | 2.2502 | 3.7061 | 2.5972 | 1.5023 | 1.1950 | 0.5515 |
-| 0.80B | 2.1845 | 3.6548 | 2.5364 | 1.4449 | 1.1017 | 0.5654 |
-| 1.00B | 2.1578 | 3.6312 | 2.4608 | 1.3964 | 1.1427 | 0.5650 |
-| 1.20B | 2.1424 | 3.6009 | 2.4223 | 1.4379 | 1.1085 | 0.5693 |
-| 1.40B | 2.1203 | 3.5817 | 2.3800 | 1.4193 | 1.1001 | 0.5690 |
-| 1.60B | 2.0937 | 3.5677 | 2.3753 | 1.3660 | 1.0657 | 0.5746 |
-| 1.80B | 2.0724 | 3.5296 | 2.3432 | 1.3668 | 1.0498 | 0.5770 |
-| 2.00B | 2.0511 | 3.5338 | 2.3077 | 1.3540 | 1.0088 | 0.5815 |
-| 2.20B | 2.0289 | 3.5002 | 2.2884 | 1.3181 | 1.0088 | 0.5860 |
-| 2.40B | 2.0119 | 3.4884 | 2.2674 | 1.3035 | 0.9886 | 0.5884 |
-| 2.60B † | 2.2275 | 3.4527 | 2.2387 | 1.2930 | 1.9255 | 0.5462 |
-| 2.80B † | 2.2259 | 3.4289 | 2.2180 | 1.3646 | 1.8920 | 0.5435 |
+| Tokens | General | Science | Math | Code | Convo | Long | Top-1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0.03B | 5.4140 | 4.4630 | 3.6560 | 2.9590 | – | – | 0.3310 |
+| 0.20B | 3.9960 | 2.9390 | 1.6770 | 1.3590 | – | – | 0.5210 |
+| 0.40B | 3.7860 | 2.7110 | 1.5850 | 1.2780 | – | – | 0.5380 |
+| 0.80B | 3.6548 | 2.5364 | 1.4449 | 1.1017 | 2.2360 | 3.2150 | 0.5654 |
+| 1.20B | 3.6009 | 2.4223 | 1.4379 | 1.1085 | 2.1970 | 3.1950 | 0.5693 |
+| 1.60B | 3.5677 | 2.3753 | 1.3660 | 1.0657 | 2.1720 | 3.1630 | 0.5746 |
+| 2.00B | 3.5338 | 2.3077 | 1.3540 | 1.0088 | 2.1100 | 3.1240 | 0.5815 |
+| 2.20B | 3.5002 | 2.2884 | 1.3181 | 1.0088 | 2.0960 | 3.1390 | 0.5860 |
+| 2.40B | 3.4884 | 2.2674 | 1.3035 | 0.9886 | – | – | 0.5884 |
+| 2.60B † | 3.4527 | 2.2387 | 1.2930 | 1.9255 | – | – | 0.5462 |
+| 2.80B † | 3.4289 | 2.2180 | 1.3646 | 1.8920 | – | – | 0.5435 |
+| **5.23B** | **3.3613** | **2.0502** | **1.0149** | **1.6088** | **1.6333** | **3.0388** | **0.5777** |
 
-† From 2.6B the training sequence length changed from 2048 to 8192. Evaluation stays at
-2048 throughout, so these rows are comparable in measurement but not in training
-condition. The mean rises and code more than doubles while general, science and math all
-continue to improve. The model is adapting to longer training sequences, and the mean
-is being carried by code. These rows are **not** a quality regression and should not be
-read as one.
+The 2.4B → 5.23B rows are **not** a clean continuation, and the gap is documented rather
+than smoothed over. Three changes landed between them: the sequence length went to 8192
+and back to 2048, the data mixture was rebuilt (the `arith` mix, which raised general,
+science, math, code, convo, long and arithmetic shares), and the corpus was regenerated.
+The 5.23B row is measured on 32 windows per domain (65,536 tokens), the earlier rows on
+8 windows; a larger measurement is a *different* estimate, not a strictly better one.
 
-Observed trend before the switch was `approximately -0.11 nats per billion tokens`,
-stable from 1.2B to 2.4B.
+Reading the movement honestly:
+- **science 2.2674 → 2.0502** and **math 1.3035 → 1.0149** are large, real gains.
+- **general 3.4884 → 3.3613** continues the pre-existing trend.
+- **code 0.9886 → 1.6088 is a genuine regression**, not noise. It is 0.62 nats, far above
+  the 0.066 standard error. The trajectory locates it: code was 0.9886 at 2.40B and
+  1.9255 at 2.60B † — it more than doubled in the single step where the training sequence
+  went from 2048 to 8192, and no other domain moved that way. It has since recovered to
+  1.6088 without returning to its 2.4B level. The honest reading is that code is the
+  domain most sensitive to the sequence-length change, and that the 8192 experiment was
+  not undone cleanly for it. The corpus rebuild (code is 160M tokens, the thinnest bucket
+  at 8 shards) is a plausible contributing factor but is **not** established by this
+  data — attributing the regression to it would be a guess.
+- **mean is intentionally omitted** for the 5.23B row: averaging six domains that changed
+  mixture weights mid-run produces a number whose movement cannot be attributed.
+
+Observed trend before the corpus rebuild was `approximately -0.11 nats per billion
+tokens`, stable from 1.2B to 2.4B, on general/science/math/code.
+
+### Why there is no Muon here
+
+The table above previously listed Muon as the optimizer. It is not. Training runs
+**AdamW**. `HybridMuonAdamW` exists in `molab/muon.py` and is selectable with
+`--optimizer muon`, but it was measured and rejected for this run on two grounds:
+
+1. **Cost:** +7.7% step time (0.648 → 0.698 s/step at batch 16), with 353M of 375M
+   parameters routed to Muon.
+2. **Break-even:** the published absolute gap is roughly 2B tokens of progress. Switching
+   optimizer alone therefore costs about **+1.02 days** on this run before it pays back;
+   bundled with a full tokenizer-v2 restart the estimate turns marginally negative
+   (−0.14 days), which is inside the noise of the estimate itself.
+
+There is a harder blocker: `HybridMuonAdamW.load_state_dict` raises on a non-hybrid
+checkpoint, so Muon cannot be adopted by resuming — it requires restarting from step 0.
+At 5.2B tokens in, that trade is not close.
+
+**QK-Clip** (Kimi K2) is implemented and verified but **disabled**. Attention logits were
+measured exactly on the real checkpoint: max **167.0** at layer 16, with 9 of 24 layers
+above τ=100. Enabling the clip mid-run would change numerics discontinuously, so it is
+armed for the next run rather than this one.
 
 ### What the curve does not say
 
@@ -127,16 +161,41 @@ stable from 1.2B to 2.4B.
 
 ## Corpus
 
-Trained on 5.5B tokens from a byte-level BPE vocabulary of 32,768, drawn from fineweb-edu
-(general), open-web-math (science), OpenMathInstruct-2 and NuminaMath (math), and
-OpenCodeInstruct and OpenCodeReasoning (code), plus dialogue and long-document data in
-the later mixture.
+Trained on 5.23B tokens from a byte-level BPE vocabulary of 32,768. The corpus was
+rebuilt for a 20B-token run, sized from **measured** dataset capacity rather than dataset
+cards.
 
-A corpus rebuild for a 20B-token run is in progress, sized from measured dataset capacity
-rather than dataset cards. One finding worth recording: the original mixture sampled math
-at **5.35× repetition** against a 51M-token bucket, and math is the only domain showing no
-improvement in paired per-window comparisons. Repetition moves loss without adding
-capability.
+Current token counts per bucket, as shards on disk:
+
+| Bucket | Tokens | Source |
+|---|---:|---|
+| general | 2.48B | fineweb-edu |
+| science | 1.32B | open-web-math |
+| math | 51M | OpenMathInstruct-2, NuminaMath, FineMath |
+| code | 160M | OpenCodeInstruct, OpenCodeReasoning |
+| convo | 600M | WildChat and multi-turn dialogue |
+| long | 2.03B | long-document web text |
+| arithmetic | 350M | synthesised, 3.8M problems |
+| indic | in progress | English Wikipedia, India-related articles |
+
+Bytes per token are **not** uniform, which matters more than it looks for interpreting the
+loss table: general 4.56, science 4.98, code 2.50, math 2.21. A nats improvement on math is
+therefore not comparable to the same number on general — math packs roughly twice as much
+text into each token, so each token carries less information.
+
+Two findings worth recording:
+
+- The original mixture sampled math at **5.35× repetition** against a 51M-token bucket,
+  and math was the only domain showing no improvement in paired per-window comparisons.
+  Repetition moves loss without adding capability.
+- **Indic history and culture is English-only by decision.** Native-script corpora such as
+  ai4bharat/sangraha would add ~22 scripts to a 32k vocabulary that was never budgeted for
+  them. The bucket is English Wikipedia articles selected as India-related, which adds
+  knowledge without diluting the tokenizer.
+- There is **no shuffling** in the training loop: batches are consumed strictly
+  sequentially and position advances monotonically. Duplication was measured independently
+  (0 duplicates in a 400-document sample), so this is not currently harmful, but it is a
+  known limitation rather than a design choice.
 
 ## Status
 
@@ -146,10 +205,11 @@ capability.
 | Attention reference checks (FP32, 1,024 to 6,144) | Complete |
 | BF16 training step | Complete |
 | Real-text training, 194M design | **Not run** |
-| Real-text training, 375M core | **Complete to 2.8B tokens**, continuing |
-| Held-out evaluation from 0.03B to 2.8B | Complete, table above |
-| Long-context recall | **Unmeasured**. The memory probe is a synthetic proxy, not a benchmark |
-| Instruction following / reasoning | **Unmeasured** |
+| Real-text training, 375M core | **Complete to 5.23B tokens**, running toward 20B |
+| Held-out evaluation from 0.03B to 5.23B | Complete, table above |
+| Long-context recall | **Unmeasured and currently blocked.** Sequence length is 2048, and `WINDOW=2048` means every layer has taken the full-attention branch: the sliding window has never been active and the global layers have never seen a position beyond 2047. Corpus supply is also thin (12.6% of general tokens live in documents ≥8K). |
+| Laptop inference | **Working.** A verified CPU runner ships with the public checkpoint; measured 19–23 tok/s |
+| Instruction following / reasoning | Partially measured: 20-turn chat probe, refusal rate 0.40, turn-1 relevance 0.53 falling to 0.38 on later turns |
 
 ## Planned experiments
 
