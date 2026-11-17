@@ -107,10 +107,22 @@ other**; comparisons spanning the boundary carry the 8-window noise on one side.
 | 2.60B † | 3.4527 | 2.2387 | 1.2930 | 1.9255 | – | – | 0.5462 |
 | 2.80B † | 3.4289 | 2.2180 | 1.3646 | 1.8920 | – | – | 0.5435 |
 | **5.23B** | **3.3613** | **2.0502** | **1.0149** | **1.6088** | **1.6333** | **3.0388** | **0.5777** |
+<!-- EVAL-TABLE:START -->
+
+_Auto-generated from `eval_curve.jsonl` at 4 comparable milestones. Do not edit between the markers._
+
+Held-out cross-entropy, 48 windows of 2048 tokens per domain (98,304 tokens; standard error 0.003–0.012). Lower is better.
+
+| Tokens | General | Science | Math | Code | Convo | Long | Top-1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
 | 5.80B | 3.2455 | 1.9917 | 1.0674 | 1.6918 | 1.6678 | 2.8613 | 0.5761 |
 | 6.00B | 3.2375 | 1.9903 | 1.1204 | **1.7273** | 1.6606 | 2.8240 | 0.5708 |
 | 6.20B | 3.2113 | 1.9556 | 1.1086 | 1.6427 | 1.6392 | 2.8488 | 0.5785 |
-| **6.40B** | **3.2048** | **1.9485** | **0.9487** | 1.6518 | 1.6578 | **2.7840** | **0.5858** |
+| 6.40B | **3.2048** | **1.9485** | **0.9487** | 1.6518 | 1.6578 | **2.7840** | **0.5858** |
+
+Latest comparable milestone: **6.40B**, mean 1.9385, top-1 0.5858. Bold marks each domain's best value in this series.
+
+<!-- EVAL-TABLE:END -->
 
 The 2.4B → 5.23B rows are **not** a clean continuation, and the gap is documented rather
 than smoothed over. Three changes landed between them: the sequence length went to 8192
