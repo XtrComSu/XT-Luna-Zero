@@ -383,9 +383,9 @@ armed for the next run rather than this one.
 
 ## Corpus
 
-Trained on 5.23B tokens from a byte-level BPE vocabulary of 32,768. The corpus was
-rebuilt for a 20B-token run, sized from **measured** dataset capacity rather than dataset
-cards.
+Training on a byte-level BPE vocabulary of 32,768. The corpus holds **11.652B measured
+tokens**, sized from actual dataset capacity rather than dataset cards, against a run
+target of 15B tokens — so every bucket repeats once, at 1.28–1.29× each.
 
 Current token counts per bucket, as shards on disk:
 
@@ -394,7 +394,7 @@ Current token counts per bucket, as shards on disk:
 | general | 4.208B | fineweb-edu (sample-10BT, sample-100BT) |
 | long | 2.025B | long-document web text |
 | science | 2.153B | cosmopedia-v2, finemath-4plus |
-| code | 1.223B | OpenCodeReasoning, codeforces-cots, KodCode-V1, smollm python-edu |
+| code | 1.223B | OpenCodeReasoning, codeforces-cots, KodCode-V1, smollm python-edu (+10.3M CodeContests, unreachable — see above) |
 | math | 0.952B | OpenMathReasoning (`cot`, `tir`), OpenR1-Math-220k, NuminaMath-CoT, MathInstruct |
 | convo | 600M | WildChat and multi-turn dialogue |
 | arithmetic | 350M | synthesised, 3.8M problems |
@@ -461,8 +461,8 @@ Two findings worth recording:
 | Attention reference checks (FP32, 1,024 to 6,144) | Complete |
 | BF16 training step | Complete |
 | Real-text training, 194M design | **Not run** |
-| Real-text training, 375M core | **Running, 6.5B of a 15B target** (retargeted from 20B) |
-| Held-out evaluation from 0.03B to 6.40B | Complete, table above. 5.80B onward is a paired 48-window series |
+| Real-text training, 375M core | **Running, 6.8B of a 15B target** (retargeted from 20B) |
+| Held-out evaluation from 0.03B to 6.80B | Complete, table above. 5.80B onward is a paired 48-window series |
 | Long-context recall | **Unmeasured and currently blocked.** Sequence length is 2048, and `WINDOW=2048` means every layer has taken the full-attention branch: the sliding window has never been active and the global layers have never seen a position beyond 2047. Corpus supply is also thin (12.6% of general tokens live in documents ≥8K). |
 | Laptop inference | **Working.** A verified CPU runner ships with the public checkpoint; measured 19–23 tok/s |
 | Instruction following / reasoning | Partially measured: 20-turn chat probe, refusal rate 0.40, turn-1 relevance 0.53 falling to 0.38 on later turns |
