@@ -271,6 +271,56 @@ question is whether to drop those 11 shards or accept a small loss of raw throug
 avoid teaching hash sequences. Both options are cheaper than the alternatives, and
 neither has been applied.
 
+### Code ability, measured rather than inferred
+
+Loss on code text is not program synthesis, so a probe was built that **executes** what
+the model writes. It takes CodeContests problems with public tests, generates a solution
+greedily (one token per forward pass, no sampling, so checkpoints stay comparable), runs
+it under a 5-second timeout, and requires every public test to pass.
+
+**Result at step ~102,400 (6.71B tokens): 0 of 30 solved.** One problem re-run with a
+900-token budget produced a complete 1,389-character program — not a truncated one — and
+also failed.
+
+What the model writes is structured and plausible, and fails at the algorithm:
+
+```python
+import sys
+
+def main():
+    T = int(sys.stdin.readline())
+    for _ in range(T):
+        R = int(sys.stdin.readline())
+        coords = []
+        for _ in range(3):
+            x, y = map(int, sys.stdin.readline().split())
+            coords.append((x, y))
+```
+
+Correct stdin parsing, correct loop structure, correct types — then no working algorithm,
+and occasionally open derailment (one sample nested `for a in range(0, 50000)` inside
+another to compute a gcd).
+
+This reframes the regression honestly. The rising code loss is **not** evidence of lost
+ability, because there is no measurable ability on this benchmark to lose: a
+139M-active-parameter model scoring pass@1 ≈ 0 on CodeContests is the expected result, and
+greedy decoding with no sample filtering gives it the worst possible shot. The instrument
+is too insensitive at this scale to track progress, and the correct conclusion is that
+**the mixture should not be changed on the strength of it** — two changes have already
+been made to code, and v7 puts it at 1.29×, at parity with every other bucket.
+
+The same limitation applies to the loss curve itself: it can rank checkpoints, but it
+cannot currently demonstrate that any of them can write a working program.
+
+A related trap, recorded because it nearly caused a wasted intervention: 10.3M tokens of
+genuine competitive-programming data (13,328 CodeContests problems) were built and
+appended as shards 212–216, and then found to be **unreachable**. Code sits at batch
+position 0.072B of a 1.233B pool; at a 12.36% share it reaches only ~1.098B by the 15B
+target, while those shards begin at 1.223B. Appending data to a bucket that is read
+strictly forward from a saved position does not make that data train; it has to land
+ahead of the read head. Nothing was disturbed to fix this — 10.3M tokens is 0.8% of the
+pool and no measurement available here can detect its effect.
+
 Observed trend before the corpus rebuild was `approximately -0.11 nats per billion
 tokens`, stable from 1.2B to 2.4B, on general/science/math/code.
 
