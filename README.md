@@ -229,6 +229,48 @@ pools (general 0.70× consumed, long 0.22×). A pure pool split would have ended
 with general and science near 1.44× and long near 0.94×. Solving for equal *final*
 epochs gives **1.28–1.29× for all eight buckets** — a 0.009-epoch spread.
 
+### Code is the one domain still moving the wrong way
+
+At 6.60B the paired deltas were general −0.0235 (t=−5.4), science −0.0172 (t=−5.2),
+math −0.0287 (t=−11.1), long −0.0267 (t=−4.4), convo −0.0092 (t=−0.9, flat), and
+**code +0.0201 (t=+3.0)**. Overall mean fell 1.9385 → 1.9261 and top-1 rose
+0.5858 → 0.5888, so the run is improving — but code has now risen at three of the last
+four points.
+
+The cause was not found in the mixture, and is worth recording because the obvious
+hypothesis was wrong. Code is *not* being over-repeated: at v7 it gets 1.29×, the same
+as every other bucket. Two measurements point elsewhere.
+
+**1. A small tail of unusable training data.** Sampling every one of the 212 code
+train shards (5 windows each, decoding on EOT boundaries) found **11 shards where over
+half the documents are Git blob hashes and repository paths** rather than code:
+
+```
+dc44aed22f1ce2ff83aae4/Leetcode/Trees/Medium/865_smallest_subtree...py
+0529d754f9929c6bfadabd3bfea2156f8114ee59/Leetcode/Arrays/Easy/665_non_dec...
+```
+
+That is 0.055B of the 1.223B pool — **4.5%** — introduced by the `KodCode-V1` source,
+which went in third and last during the code build. An earlier single-sample-per-shard
+probe suggested the problem was 57.7% of the pool; that measurement was wrong (five
+samples per shard is enough to see the difference), and it is recorded here rather than
+quietly deleted because the first number nearly triggered a much larger intervention
+than the evidence supported.
+
+**2. A distribution mismatch at the evaluation.** The code held-out set is
+competitive-programming style — stdin parsing, `map(int, input().split())`,
+`print("Yes")` — while the newest training shards are repository snapshots with almost
+no stdin idioms. Measured on decoded documents: the held-out shards are **80–100%
+stdin-style**, the noisy train shards are **0%**. So part of the code number reflects the
+model being asked for a style the newest data does not teach, which is a data-selection
+problem rather than a model or mixture problem.
+
+Neither is fixed yet. The clean prefix (201 shards, 1.168B tokens) is intact and the
+trainer only reaches the noisy tail after ~95% of the pool, so there is time; the open
+question is whether to drop those 11 shards or accept a small loss of raw throughput to
+avoid teaching hash sequences. Both options are cheaper than the alternatives, and
+neither has been applied.
+
 Observed trend before the corpus rebuild was `approximately -0.11 nats per billion
 tokens`, stable from 1.2B to 2.4B, on general/science/math/code.
 
