@@ -110,7 +110,7 @@ other**; comparisons spanning the boundary carry the 8-window noise on one side.
 
 <!-- EVAL-TABLE:START -->
 
-_Auto-generated from `eval_curve.jsonl` at 4 comparable milestones. Do not edit between the markers._
+_Auto-generated from `eval_curve.jsonl` at 5 comparable milestones. Do not edit between the markers._
 
 Held-out cross-entropy, 48 windows of 2048 tokens per domain (98,304 tokens; standard error 0.003–0.012). Lower is better.
 
@@ -119,9 +119,10 @@ Held-out cross-entropy, 48 windows of 2048 tokens per domain (98,304 tokens; sta
 | 5.80B | 3.2455 | 1.9917 | 1.0674 | 1.6918 | 1.6678 | 2.8613 | 0.5761 |
 | 6.00B | 3.2375 | 1.9903 | 1.1204 | 1.7273 | 1.6606 | 2.8240 | 0.5708 |
 | 6.20B | 3.2113 | 1.9556 | 1.1086 | **1.6427** | **1.6392** | 2.8488 | 0.5785 |
-| 6.40B | **3.2048** | **1.9485** | **0.9487** | 1.6518 | 1.6578 | **2.7840** | 0.5858 |
+| 6.40B | 3.2048 | 1.9485 | 0.9487 | 1.6518 | 1.6578 | 2.7840 | 0.5858 |
+| 6.60B | **3.1813** | **1.9314** | **0.9200** | 1.6719 | 1.6485 | **2.7572** | 0.5888 |
 
-Latest comparable milestone: **6.40B**, mean 1.9385, top-1 0.5858. Bold marks each domain's best value in this series.
+Latest comparable milestone: **6.60B**, mean 1.9261, top-1 0.5888. Bold marks each domain's best value in this series.
 
 <!-- EVAL-TABLE:END -->
 
