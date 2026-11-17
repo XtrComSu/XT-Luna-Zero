@@ -266,11 +266,42 @@ stdin-style**, the noisy train shards are **0%**. So part of the code number ref
 model being asked for a style the newest data does not teach, which is a data-selection
 problem rather than a model or mixture problem.
 
-Neither is fixed yet. The clean prefix (201 shards, 1.168B tokens) is intact and the
-trainer only reaches the noisy tail after ~95% of the pool, so there is time; the open
-question is whether to drop those 11 shards or accept a small loss of raw throughput to
-avoid teaching hash sequences. Both options are cheaper than the alternatives, and
-neither has been applied.
+**Root cause found (2026-11-17).** This is not a hash-sequence problem. The bucket is
+92% reasoning prose because the builder's field-priority list put `output`/`solution`
+ahead of `problem`/`input`/`instruction`, so on every source that stores a task and its
+response separately the *task was discarded*. On `nvidia/OpenCodeReasoning` one row holds
+`input` (882 chars, the problem), `output` (9,617 chars, the CoT) and `solution` (360
+chars, the code); `output` won, so the bucket trained on mid-thought continuations with
+no problem and no code. Measured: only **1.6%** of the bucket's characters are inside
+fenced code, and **60.9%** of its 2,048-token windows contain no document start at all —
+i.e. no instruction, just continuation.
+
+A full audit of all eight buckets, two independent model reviews, and a corrected metric
+for this class of defect are in `CORPUS-AUDIT.md` in the data repo (`code/CORPUS-AUDIT.md`).
+The short version, as a fraction of windows that contain no task at all:
+
+| bucket | windows with no document start |
+|---|---:|
+| science, arithmetic | 0.0% |
+| general | 17.1% |
+| convo | 24.4% |
+| indic | 44.3% |
+| code | **60.9%** |
+| math | **62.8%** |
+| long | **98.7%** |
+
+`code` and `math` share the defect; `long` is mismatched to a 2,048-token window; `indic`
+is English text about India rather than Indic-language text.
+
+**The fix is written and tested but not applied.** `build_fixed.py` names the task and
+response fields per source instead of searching a priority list, caps document length so
+one pair fits inside one window, and asserts the pairing before writing. Measured on the
+capped rebuild: **0.0% mid-document windows** (from 63.4% for code, 62.9% for math, 46.7%
+for indic), median document 1,006 / 1,793 / 1,793 tokens, ending in real code and real
+boxed answers. `swap.py` installs clean shards ahead of each bucket's read head, moves the
+old pool to `_old/` rather than deleting it, refuses to touch any `heldout_*.bin`
+(`fixed_windows` derives starts from `arr.size`, so changing a heldout size silently
+invalidates the whole eval curve), and asserts shard counts and token ids afterwards.
 
 ### Code ability, measured rather than inferred
 
@@ -380,6 +411,31 @@ armed for the next run rather than this one.
   nothing about instruction following, reasoning chains, or long-context recall.
 - Code crossed below math at 2.0B and is the only domain that changed discontinuously at
   the sequence-length switch. Both facts are unexplained by this curve alone.
+
+## Run interruption (2026-11-17, step 114,400)
+
+The training box was terminated by the host (HTTP 410 on all six known box URLs), not by a
+fault in the run. State at that moment:
+
+| item | status |
+|---|---|
+| Checkpoint | **step 114,400, resumable**, `train_state.pt` 4.5 GB on `XtrCom/xt-luna-ckpt-public`; `latest.json` points at it |
+| Weights | `weights/last/model.safetensors` present and loadable (362 tensors; tied embedding stored once) |
+| Tokenized corpus | **fully intact** — 1,217 shards, 11.73B tokens, all 8 buckets plus heldout |
+| `arithmetic` heldout | **recovered** — 3 shards, 12.00M tokens (the bucket previously had none) |
+| Progress | 114,400 / 228,881 steps = 7.50B of 15B tokens |
+| Docs and scripts | all rebuild, audit and verification scripts backed up to `code/` in the data repo |
+
+Nothing is lost. Resuming needs one GPU box: restore the data repo, download
+`ckpt/step_114400/train_state.pt`, and launch with `--mix v7`. The rebuild described above
+can then be applied before restarting, since a restart re-globs the data directory anyway.
+
+A note on why the corpus mattered more than the loss curve here: at 7.5B tokens the model
+predicts real code to a mean of **0.713** nats (median ~0.006) inside the same windows
+where the aggregate reads 1.667, because 92% of those tokens are reasoning prose. The
+capability was always better than the headline number, and the data defect was in the task
+pairing rather than in the mixture weights — which is why two earlier mixture changes
+failed to move it.
 
 ## Corpus
 
