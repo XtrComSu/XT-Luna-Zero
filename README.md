@@ -313,6 +313,30 @@ been made to code, and v7 puts it at 1.29×, at parity with every other bucket.
 The same limitation applies to the loss curve itself: it can rank checkpoints, but it
 cannot currently demonstrate that any of them can write a working program.
 
+### Code turned the corner at 6.80B
+
+The 6.60B → 6.80B paired comparison is the first point where code stops rising:
+
+| Domain | 6.60B | 6.80B | Δ | t | Verdict |
+|---|---:|---:|---:|---:|---|
+| math | 0.9200 | 0.9077 | −0.0123 | −5.75 | better |
+| long | 2.7572 | 2.7308 | −0.0265 | −2.65 | better |
+| **code** | **1.6719** | **1.6670** | **−0.0050** | −1.21 | **flat (was +0.0201)** |
+| general | 3.1813 | 3.1777 | −0.0036 | −1.02 | flat |
+| science | 1.9314 | 1.9350 | +0.0037 | +1.43 | flat |
+| convo | 1.6485 | 1.6630 | +0.0145 | +1.26 | flat |
+
+No domain regressed. Code's three-milestone rise ends here, which — combined with the
+probe result — supports the reading that it was a distribution/measurement effect rather
+than a loss of capability. Against the 5.80B alarm point every domain is now better:
+general −0.0678, science −0.0567, math −0.1598, code −0.0248, convo −0.0048,
+long −0.1306.
+
+Mean 1.9261 → 1.9219 and top-1 0.5888 → 0.5892, both still improving. The rate has
+flattened (mean fell 0.0123 over the previous interval, 0.0043 over this one), which is
+what a cosine decay is supposed to look like as the learning rate drops to 1.16e-04 —
+not a plateau, since the paired tests still resolve movement in math and long.
+
 A related trap, recorded because it nearly caused a wasted intervention: 10.3M tokens of
 genuine competitive-programming data (13,328 CodeContests problems) were built and
 appended as shards 212–216, and then found to be **unreachable**. Code sits at batch
