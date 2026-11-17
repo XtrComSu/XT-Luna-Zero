@@ -107,6 +107,7 @@ other**; comparisons spanning the boundary carry the 8-window noise on one side.
 | 2.60B † | 3.4527 | 2.2387 | 1.2930 | 1.9255 | – | – | 0.5462 |
 | 2.80B † | 3.4289 | 2.2180 | 1.3646 | 1.8920 | – | – | 0.5435 |
 | **5.23B** | **3.3613** | **2.0502** | **1.0149** | **1.6088** | **1.6333** | **3.0388** | **0.5777** |
+
 <!-- EVAL-TABLE:START -->
 
 _Auto-generated from `eval_curve.jsonl` at 4 comparable milestones. Do not edit between the markers._
