@@ -412,6 +412,30 @@ armed for the next run rather than this one.
 - Code crossed below math at 2.0B and is the only domain that changed discontinuously at
   the sequence-length switch. Both facts are unexplained by this curve alone.
 
+## Run resumed again (2026-11-18, step 122,071 → )
+
+A third box, restored from the Hub in **324 s** with zero failures:
+
+| item | verification |
+|---|---|
+| Corpus | 1,217 shards, **11.730B tokens** (general 4.224B, science 2.161B, long 2.045B, code 1.241B, math 0.953B, convo 0.603B, arithmetic 0.362B, indic 0.141B) |
+| Tokenizer | sha256 `e096c2ef…c690b4` — exact match |
+| Checkpoint | **step 122,071**, 4,500,277,543 bytes |
+| Health | `healthcheck.py` → `"ok": true` |
+
+The previous box had pushed a checkpoint at **122,071** before it was reaped, so the restore
+recovered 7,071 steps (0.46B tokens) that would otherwise have been lost — the 200M-token
+backup cadence earning its keep. Training resumed at ~53,400 tok/s.
+
+Two things were learned about recovery itself and are now fixed in the repository rather
+than patched per box:
+
+- `launch.sh` and `watchdog.sh` did not survive the box loss, because they lived only on the
+  box. Both are now stored in `code/` alongside `restore3.py`, so a fresh box restores its
+  own launcher.
+- the clean `tok2fix` rebuilds also did not survive — only the scripts did. Rebuilds must be
+  pushed as they are produced, or they cost the same 45 minutes again on every box.
+
 ## Run resumed (2026-11-18, step 114,400 → )
 
 The box was replaced and the run is live again. Everything was restored from the Hub and
