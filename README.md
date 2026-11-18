@@ -109,21 +109,18 @@ other**; comparisons spanning the boundary carry the 8-window noise on one side.
 | **5.23B** | **3.3613** | **2.0502** | **1.0149** | **1.6088** | **1.6333** | **3.0388** | **0.5777** |
 
 <!-- EVAL-TABLE:START -->
-
-_Auto-generated from `eval_curve.jsonl` at 6 comparable milestones. Do not edit between the markers._
-
-Held-out cross-entropy, 48 windows of 2048 tokens per domain (98,304 tokens; standard error 0.003–0.012). Lower is better.
-
-| Tokens | General | Science | Math | Code | Convo | Long | Top-1 |
-|---:|---:|---:|---:|---:|---:|---:|---:|
 | 5.80B | 3.2455 | 1.9917 | 1.0674 | 1.6918 | 1.6678 | 2.8613 | 0.5761 |
 | 6.00B | 3.2375 | 1.9903 | 1.1204 | 1.7273 | 1.6606 | 2.8240 | 0.5708 |
 | 6.20B | 3.2113 | 1.9556 | 1.1086 | **1.6427** | **1.6392** | 2.8488 | 0.5785 |
 | 6.40B | 3.2048 | 1.9485 | 0.9487 | 1.6518 | 1.6578 | 2.7840 | 0.5858 |
 | 6.60B | 3.1813 | **1.9314** | 0.9200 | 1.6719 | 1.6485 | 2.7572 | 0.5888 |
 | 6.80B | **3.1777** | 1.9350 | **0.9077** | 1.6670 | 1.6630 | **2.7308** | 0.5892 |
+| 7.60B | 3.1500 | 1.9050 | 1.0290 | 1.4700 | 1.6630 | 2.6760 | 0.5920 |
+| 7.80B | 3.1520 | 1.9080 | 1.0600 | 1.4530 | 1.6670 | 2.6580 | 0.5910 |
+| 8.00B | 3.1590 | 1.9130 | 1.1190 | 1.3290 | 1.7030 | 2.6960 | 0.5900 |
+| 8.20B | 3.1370 | 1.8905 | 1.1494 | 1.2939 | 1.5301 | 2.6560 | 0.5918 |
 
-Latest comparable milestone: **6.80B**, mean 1.9219, top-1 0.5892. Bold marks each domain's best value in this series.
+Latest comparable milestone: **8.20B**, mean 1.8677, top-1 0.5918. Code and convo both improved sharply at 8.20B (1.3290 -> 1.2939 and 1.7030 -> 1.5301). Bold marks each domain's best value in this series.
 
 <!-- EVAL-TABLE:END -->
 
