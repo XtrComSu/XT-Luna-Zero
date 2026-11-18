@@ -412,6 +412,36 @@ armed for the next run rather than this one.
 - Code crossed below math at 2.0B and is the only domain that changed discontinuously at
   the sequence-length switch. Both facts are unexplained by this curve alone.
 
+## Run resumed (2026-11-18, step 114,400 → )
+
+The box was replaced and the run is live again. Everything was restored from the Hub and
+verified rather than assumed:
+
+| item | verification |
+|---|---|
+| Corpus | 1,217 shards, **11.730B tokens**, 23.46 GB — byte sizes checked against the Hub, 0 failures |
+| Tokenizer | sha256 `e096c2ef…c690b4`, 32,768 vocab — **exact** match to the laptop's original |
+| Checkpoint | `train_state.pt` **4,500,277,543 bytes**, loads with 363 tensors, step 114,400 |
+| Relaunch config | read from the checkpoint's own recorded `args`, not from memory |
+| Backups | **verified by pushing**: 4.50 GB state + 750 MB weights in 26.4 s, `latest.json` advanced |
+
+One flag needed deriving: the checkpoint records everything except `accum`, and 7,497,318,400
+tokens ÷ 114,400 steps = exactly 65,536/step = 2048 × 16 × **2**. That also reproduces the
+run's target, 15e9 / 65,536 = 228,881 steps.
+
+Two silent-failure bugs were found and fixed on the way, both of the same shape — a line
+that appears to work and does nothing:
+
+- the data restore set a base URL in the parent shell and used it inside an `xargs sh -c`
+  subshell, where it expanded to empty; 1,217 iterations created 1,217 empty directories and
+  downloaded nothing. Counting directories would have said "done". Counting files said 0.
+- `backup.py` resolves the token from `$HOME`, which on this box is `/home/marimo` and not
+  `/root`. The token was installed in `/root` first and `whoami` still failed.
+
+Watchdog, 30-minute backups and `healthcheck.py` are all running; `healthcheck` reports
+`"ok": true`. Rebuilds of `code`, `math` and `indic` with task–response pairing are running
+alongside the trainer.
+
 ## Run interruption (2026-11-17, step 114,400)
 
 The training box was terminated by the host (HTTP 410 on all six known box URLs), not by a
