@@ -109,6 +109,13 @@ other**; comparisons spanning the boundary carry the 8-window noise on one side.
 | **5.23B** | **3.3613** | **2.0502** | **1.0149** | **1.6088** | **1.6333** | **3.0388** | **0.5777** |
 
 <!-- EVAL-TABLE:START -->
+
+_Auto-generated from `eval_curve.jsonl` at 10 comparable milestones. Do not edit between the markers._
+
+Held-out cross-entropy, 48 windows of 2048 tokens per domain (98,304 tokens; standard error 0.003-0.012). Lower is better.
+
+| Tokens | General | Science | Math | Code | Convo | Long | Top-1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
 | 5.80B | 3.2455 | 1.9917 | 1.0674 | 1.6918 | 1.6678 | 2.8613 | 0.5761 |
 | 6.00B | 3.2375 | 1.9903 | 1.1204 | 1.7273 | 1.6606 | 2.8240 | 0.5708 |
 | 6.20B | 3.2113 | 1.9556 | 1.1086 | **1.6427** | **1.6392** | 2.8488 | 0.5785 |
