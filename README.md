@@ -412,6 +412,54 @@ armed for the next run rather than this one.
 - Code crossed below math at 2.0B and is the only domain that changed discontinuously at
   the sequence-length switch. Both facts are unexplained by this curve alone.
 
+## Switched to 32K native context (2026-11-18, step 125,600)
+
+Training now runs at **seq 32,768 × batch 2 × accum 1** instead of 2048 × 16 × 2. Both are
+exactly **65,536 tokens/step**, which is load-bearing: `lr_at()` is indexed by *step* and
+`total_steps = tokens // tok_per_step`, so any other batch size would silently rescale the
+cosine schedule and move the 228,881-step target.
+
+### Why
+
+The `long` bucket is **2.01B tokens with median document 93,231 tokens**, and **97.1% of its
+tokens live in documents ≥32k** (89.5% ≥64k, 61.0% ≥128k). At a 2048 window the model saw
+2% of each document and never the rest — the largest unused resource in the corpus. This is
+also the direct fix for the speaker/context errors observed in the greedy samples, where the
+model answered as the wrong participant.
+
+### Verified safe to change mid-run, not assumed
+
+| claim | how it was checked |
+|---|---|
+| no data skipped or repeated | `take()` reads a flat `(batch*seq+1)` span, so 16×2048 and 2×32768 consume the **same tokens in the same order** |
+| read positions survive | `batch_pos` is stored in **tokens**, not windows |
+| no spurious bucket resets | `bucket_fp` hashes `(name, total, nfiles, samples)` only — **not** seq |
+| curve stays comparable | the trainer invokes eval with **`--seq 2048`** unchanged |
+| RoPE covers it | `MAX_POS = 131072`; the trainer asserts `seq > MAX_POS` and warns |
+
+### Measured cost
+
+| seq | batch | tokens/step | tok/s | peak GiB |
+|---|---|---|---|---|
+| 2,048 | 16 ×2 accum | 65,536 | 53,257 | 53.4 |
+| **32,768** | **2** | **65,536** | **23,005 live** (31,451 isolated) | **18.5** |
+| 16,384 | 4 | 65,536 | 27,875 | 12.6 |
+| 32,768 | 6 | 196,608 | 17,618 | 33.2 |
+
+Memory *fell* from 53.4 to 18.5 GiB, so the card is no longer the constraint. `--grad-checkpoint`
+is required: 37.8 GiB without it at 32k versus 11.3 GiB with.
+
+Note the curve is inverted from expectation — larger batches are **slower per token** (B=6 →
+17.6k vs B=2 → 31.5k) because the local-layer `chunk_loop` dominates and extra rows add
+memory pressure without parallelism. The 23,005 tok/s live figure is below the 31,451
+isolated probe because three `tok2fix` rebuilds and the shard pusher share the 20 vCPUs.
+
+Two things this does **not** fix: the fast flex-attention path is still unusable (uncompiled
+it asks for a 40 GiB scores matrix at 32k; compiled it throws an `InductorError` in Triton's
+sparse kernel), so 18 of 24 local layers remain on the slow path. And the convo speaker bug is
+a **data** defect — 22.7% of `User:`/`Assistant:` markers are glued to the previous word
+(`documents.User:`) — which no context length repairs.
+
 ## Run resumed again (2026-11-18, step 122,071 → )
 
 A third box, restored from the Hub in **324 s** with zero failures:
