@@ -3,7 +3,7 @@
 **Architecture of a 194M-Parameter Sparse Decoder**
 Technical report draft · November 6, 2026 · XtrComSu
 
-📄 **[Read the paper (PDF)](paper/XT-Luna-Zero-Architecture.pdf)**
+📄 **[Read the paper (PDF)](paper/XT-Luna-Zero-Architecture.pdf)** · **[Models (194M vs 375M Core)](#models)** · **[Measured results](#measured-results)** · **[Current status](#status)**
 
 > **This README was updated on 2026-11-17.** The paper describes the *original* 194M
 > design and its numerical checks, and has not been rewritten. Real-text training has
